@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+    }
+    #app {
+      border: 4px transparent;
+      height: 100vh;
+      font-family: Roboto, sans-serif;
+      display: grid;
+      padding: 8px;
+      grid-template-rows: auto;
+      grid-template-columns: 1fr 1fr;
+      grid-gap: 1rem;
+      align-content: flex-start;
+    }
+    .overDropzone {
+      border: 4px solid lightcoral !important;
+  }
+  </style>
+</head>
+<body>
+
+  <div v-cloak id="app"
+    @drop.prevent="drop" 
+    @dragover.prevent 
+    @dragover="overDropzone=true" 
+    @dragleave="overDropzone=false" 
+    :class="{overDropzone}"
+  >
+      
+    <ve-image :src="manifestUrl"></ve-image>
+    <ve-manifest :src="manifestUrl"></ve-manifest>
+  
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://unpkg.com/visual-essays/dist/visual-essays/visual-essays.esm.js" type="module"></script>
+
+  <script type="module">
+
+  import { defineCustomElements } from 'https://unpkg.com/visual-essays/loader/index.js'
+
+  const iiifServer = 'https://iiif.visual-essays.net'
+
+  new Vue({
+    el: '#app',
+    data: () => ({
+      imageUrl: null,
+      manifestUrl: null,
+      overDropzone: false
+    }),
+    computed: {},
+    mounted() {console.log('Vue app mounted')},
+    methods: {
+      drop(e) {
+        this.overDropzone = false
+        let inputText = ''
+        if (e.dataTransfer) inputText = decodeURI(e.dataTransfer.getData('Text') || e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text/uri-list'))
+        if (inputText && isURL(inputText)) {
+          this.imageUrl = inputText
+        }
+      },
+      async getManifestUrl(imageUrl) {
+        let resp = await fetch(`${iiifServer}/?url=${encodeURIComponent(imageUrl)}`)
+        return await resp.text()
+      },
+
+    },
+    watch: {
+      imageUrl(imageUrl) {
+        console.log(imageUrl)
+        this.getManifestUrl(imageUrl).then((manifestUrl) => {
+          manifestUrl = decodeURIComponent(manifestUrl)
+          console.log(manifestUrl)
+          this.manifestUrl = manifestUrl
+        })
+      }
+    }
+  })
+  Vue.config.productionTip = false
+  Vue.config.devtools = true
+
+  function isURL(str) { return /^https*:\/\//.test(str) }
+  </script>
+
+</body>
+</html>
