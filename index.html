@@ -16,7 +16,7 @@
     .title {font-size:1.5rem; font-weight:bold;}
     .login ul {list-style-type:none; margin:0; padding:0; overflow:hidden; }
     .login li {float:left; padding-left: 12px;}
-    main {width:100%; height:100%; padding-top: 60px;}
+    main {width:100%; padding: 60px 0;}
     .wrapper {width:100%; height:calc(100% - 120px); display:flex; padding:12px; gap:12px;}
     .wrapper > * {flex: 1;} /* even width flex columns */
     .overDropzone {position:absolute; left:0; background:rgba(0,0,0,.1);}
@@ -34,7 +34,7 @@
 
     <main>
       <div class="wrapper">
-        <ve-image v-if="manifestUrl" :src="manifestUrl" :auth-token="authToken"></ve-image>
+        <ve-image v-if="manifestUrl" :src="manifestUrl" :anno-base="annoBase" :auth-token="authToken"></ve-image>
         <ve-manifest v-if="manifestUrl" :src="manifestUrl"></ve-manifest>
       </div>
     </main>
@@ -91,8 +91,9 @@
       authToken() { return this.tokenIsValid() ? this.user.token.access_token : null }
     },
     async created() {
-      let parsedUrl = new URL(location.href)
-      this.manifestUrl = parsedUrl.searchParams.get('manifest')
+      let qargs = new URL(location.href).searchParams
+      this.manifestUrl = qargs.get('manifest')
+      this.annoBase = qargs.get('anno-base')
       this.initAuth()
     },
     mounted() {},
