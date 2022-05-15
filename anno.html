@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@recogito/annotorious-openseadragon@2.7.6/dist/annotorious.min.css">
+  <title>Annotations Test</title>
+</head>
+<body>
+  <div id="toolbar"></div>
+  <div id="osd" style="width: 800px; height: 600px;"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/openseadragon/build/openseadragon/openseadragon.min.js" type="text/javascript"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@recogito/annotorious-openseadragon@2.7.6/dist/openseadragon-annotorious.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@recogito/annotorious-toolbar@0.1.1/dist/annotorious-toolbar.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@iiif/parser@1.0.8/dist/cjs/index.min.js"></script>
+  <script type="module">
+    console.log(window)
+    // import { convertPresentation2 } from '@iiif/parser/presentation-2'
+
+    let viewer = OpenSeadragon({
+      id: 'osd',
+      prefixUrl: 'https://openseadragon.github.io/openseadragon/images/',
+      tileSources: [{ url: 'https://upload.wikimedia.org/wikipedia/commons/4/47/Georgia_Jvari_monastery_IMG_9345_2070.jpg', type: 'image', buildPyramid: true }]
+    })
+    let annotorious = OpenSeadragon.Annotorious(viewer, { widgets: ['COMMENT'] })
+    Annotorious.Toolbar(annotorious, document.getElementById('toolbar'))
+    console.log(annotorious)
+
+    annotorious.on('selectAnnotation', async (anno) => {
+      console.log('selectAnnotation', anno)
+    })
+    annotorious.on('createAnnotation', async (anno) => {
+      console.log('createAnnotation', anno)
+    })
+    annotorious.on('updateAnnotation', async (anno) => {
+      console.log('updateAnnotation', anno)
+    })
+    annotorious.on('deleteAnnotation', async (anno) => {
+      console.log('deleteAnnotation', anno)
+    })
+
+  </script>
+</body>
+</html>

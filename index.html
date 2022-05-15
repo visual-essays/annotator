@@ -7,6 +7,7 @@
   <title>Visual Essays Image Annotator</title>
   <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet"/>
   <link href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.0.0-beta.73/dist/themes/light.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@recogito/annotorious-openseadragon@2.7.6/dist/annotorious.min.css">
   <style>
     [v-cloak] {display: none}
     body {margin: 0;}
@@ -18,10 +19,21 @@
     .title {font-size:1.5rem; font-weight:bold;}
     .login ul {list-style-type:none; margin:0; padding:0; overflow:hidden; }
     .login li {float:left; padding-left: 12px;}
-    main {width:100%; padding: 60px 0;}
-    .wrapper {width:100%; height:calc(100% - 120px); display:flex; padding:12px; gap:12px;}
-    .wrapper > * {flex: 1;} /* even width flex columns */
+    main {width:100%; height: calc(100vh - 50px); padding: 50px 0;}
+    #osd { width:100%; height:100%}
+    .container {width:100%; height:100%; display:flex; gap:12px; padding:12px;}
     .overDropzone {position:absolute; left:0; background:rgba(0,0,0,.1);}
+    /* .netlify-identity-user-details{display:none;} */
+    .annotations ul {padding:0; list-style:none;}
+    .annotations li {clear: both; margin-bottom: 18px;}
+    .anno {margin-bottom: 18px; overflow:auto; font-size:0.9em; cursor:pointer;}
+    .anno img {float:left; padding:0 12px 0 0;}
+    .r6o-editor {width: 300px;}
+    /*.r6o-editor-inner div:nth-last-of-type(2) {display: none}*/
+    .a9s-toolbar .a9s-toolbar-btn{width:30px;height:30px;padding:0;}
+    .anno-header, .depicts-header {display:flex;align-content:center;gap:9px;}
+    .depicts-dialog-icon{color:red;}
+    .help-dialog::part(panel){max-height:75vh; overflow-y:scroll;}
   </style>
 </head>
 <body>
@@ -31,17 +43,97 @@
     <header v-cloak>
       <a href="/"><img class="logo" src="https://visual-essays.github.io/content/static/images/favicon.svg"></a>
       <div class="title">Visual Essays Image Annotator</div>
-      <div v-html="user.email"></div>
+      <sl-tooltip content="Show help">
+        <div style="display:flex; align-items:center; cursor:pointer;" @click="showHelp"><sl-icon-button name="question-square"></sl-icon-button> Help</div>
+      </sl-tooltip>
+      <div class="login" data-netlify-identity-menu></div>
     </header>
 
     <main>
-      <div class="wrapper">
-        <ve-image v-if="manifestUrl" :src="manifestUrl" :anno-base="annoBase" :auth-token="authToken"></ve-image>
-        <!-- <ve-manifest v-if="manifestUrl" :src="manifestUrl"></ve-manifest> -->
+      <div v-if="!manifestUrl" style="padding:12px;">Drag IIIF manifest into window</div>
+      <div v-if="isLoggedIn" class="container">
+        
+        <div class="image" style="height:100%; width:100%;">
+          <div id="osd"></div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:18px;" v-if="manifestUrl" style="width:300px;" v-cloak>
+          <div class="depicts">
+            <div class="depicts-header">
+              <div><b>Entities</b><em> (people, places, etc) </em><b>depicted in image</b></div>
+              <sl-tooltip content="Edit depicted entities">
+                <sl-icon-button name="pencil" @click="openDepicts"></sl-icon-button>
+              </sl-tooltip>
+            </div>
+            <ve-depicts :manifest="manifestUrl"></ve-depicts>
+          </div>
+          
+          <div class="annotations">
+            <div class="anno-header">
+              <div style="margin-top:12px;display:inline-block;"><b>Image annotations</b></div>
+              <sl-tooltip content="Add annotation">
+                <div id="toolbar" style="display:inline-block;"></div>
+              </sl-tooltip>
+            </div>
+            <ul>
+              <li v-for="anno in annotations" :key="anno.id">
+                <div class="anno" @click="selectAnno = selectAnno ? null : anno" @mouseEnter="hoverAnno = anno" @mouseLeave="hoverAnno = null">
+                  <img :src="annoThumbnail(anno)"/>
+                  <div v-html="anno.body[0].value"></div>
+                </div>
+              </li>
+            </ul>
+          </div>
+
+        </div>
       </div>
+
+      <div v-cloak v-else class="main">
+        Please login to use the editor
+      </div>
+
     </main>
 
     <ve-footer></ve-footer>
+
+    <sl-dialog ref="helpDialog" class="help-dialog" label="Image Annotator Tool">
+      The Image Annotator Tool is used to:
+      <ol>
+        <li>
+          <h4>Identify entities that are depicted in the image</h4>
+          <p>
+          Select the pencil icon in the <b>Entities depicted in image</b> section to add or remove depicted entities.
+          </p> 
+          <p>
+          Check the <b>Prominent</b> box for entities that are the main subject of the image or are a prominent feature
+          in the image. 
+          <p>
+          <p>
+          Check the <b>Digital Representation Of</b> box for entities that are a faithful digitized representation 
+          of the indicated object or work. This attribute is typically used for images of artwork.
+          <p>
+        </li>
+        <li>
+          <h4>Annotate areas or points of interest in the image</h4>
+          <p>
+          Hold the SHIFT key while clicking and dragging the mouse on the image to create a new annotation.
+          <p>
+          </p>
+          Use the shape icons in the <b>Image annotations</b> section to switch between rectangle and polygon drawing mode. 
+          <p>
+          </p>
+          Click or tap the annotation to edit, click or tap anywhere and drag to create a new annotation.
+          When drawing a polygon, a double click closes the shape. When using touch, keep the finger on the screen 
+          and hold for a while to close the polygon.
+          <p>
+          </p>
+          Annotations can be updated or deleted after creation by clicking on the annotation shape on the image or by clicking
+          the annotation entry from the Annotations list.
+          </p>
+        </li>
+      </ol>
+      <sl-button ref="closeHelpButton" slot="footer" variant="primary">Close</sl-button>
+    </sl-dialog>    
   
   </div>
 
@@ -54,8 +146,12 @@
     document.body.appendChild(script)
   </script>
   <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js" type="text/javascript"></script>
   <script src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.0.0-beta.73/dist/shoelace.js" type="module"></script>
-  
+  <script src="https://cdn.jsdelivr.net/npm/openseadragon@3.0.0/build/openseadragon/openseadragon.min.js" type="text/javascript"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@recogito/annotorious-openseadragon@2.7.6/dist/openseadragon-annotorious.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@recogito/annotorious-toolbar@0.1.1/dist/annotorious-toolbar.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script>
     // jwt-decode 
     (function(factory){typeof define==='function'&&define.amd?define(factory):factory()}((function(){'use strict';var chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";function InvalidCharacterError(message){this.message=message}
@@ -75,30 +171,74 @@
   <script type="module">
   import { defineCustomElements } from 'https://unpkg.com/visual-essays/loader/index.js'
 
-  const iiifServer = 'https://iiif.visual-essays.net'
+  const iiifServer = location.hostname === 'localhost' ? 'http://localhost:8088' : 'https://iiif.visual-essays.net'
+  const annotationsEndpoint = location.hostname === 'localhost'
+  ? 'http://localhost:8000'
+  : 'https://api.visual-essays.net'
 
   new Vue({
     name: 'Visual Essays Image Annotator',
     el: '#app',
     data: () => ({
+      viewer: null,
+      annotator: null,
       manifestUrl: null,
+      manifest: null,
+      imageInfo: null,
+      sourceHash: null,
       overDropzone: false,
-      user: null,
       annoBase: null,
-      authToken: null
+      annotations: [],
+      hoverAnno: null,
+      selectAnno: null,
+      annosPath: null,
+      user: null
     }),
-    computed: {},
+    computed: {
+      isLoggedIn() { return this.tokenIsValid() },
+      userHash() { return this.user && sha256(this.user?.email).slice(0,7) },
+      path() { return this.sourceHash
+        ? this.annoBase
+          ? `${this.annoBase}/${this.sourceHash}`
+          : this.user
+            ? `${this.userHash}/${this.sourceHash}`
+            : null
+        : null
+      }
+    },
     async created() {
       let qargs = new URL(location.href).searchParams
-      this.manifestUrl = qargs.get('manifest')
       this.annoBase = qargs.get('anno-base')
-      this.authToken = qargs.get('auth-token')
+      let _authToken = qargs.get('auth-token')
+      if (_authToken) {
+        let decoded = jwt_decode(_authToken)
+        let _user = {
+          url: 'https://annotator.visual-essays.net/.netlify/identity',
+          token: {
+            access_token: _authToken,
+            token_type: 'bearer',
+            expires_in: decoded.exp * 1000 - Date.now(),
+            refresh_token: null,
+            expires_at: decoded.exp * 1000
+          },
+          aud: '',
+          role: '',
+          email: decoded.email,
+          user_metadata: {full_name: ''}
+        }
+        localStorage.setItem('gotrue.user', JSON.stringify(_user))
+      }
+      this.initAuth()
+      this.manifestUrl = qargs.get('manifest')
     },
-    mounted() {},
+    mounted() {
+      this.$refs.closeHelpButton.addEventListener('click', () => this.$refs.helpDialog.hide())
+    },
     methods: {
       reset() {
         this.manifestUrl = null
       },
+
       drop(e) {
         this.overDropzone = false
         let inputText = ''
@@ -107,12 +247,217 @@
           fetch(`${iiifServer}/?url=${encodeURIComponent(inputText)}`).then(resp => resp.text())
           .then((manifestUrl) => location.search = `?manifest=${encodeURI(manifestUrl)}`)
         }
-      }
+      },
 
+      initOSD() {
+        this.viewer = OpenSeadragon({
+          id: 'osd',
+          prefixUrl: 'https://openseadragon.github.io/openseadragon/images/',
+          minZoomImageRatio: 0.2,
+          maxZoomPixelRatio: 5
+        })
+        this.annotator = OpenSeadragon.Annotorious(this.viewer, { widgets: ['COMMENT'] })
+        Annotorious.Toolbar(this.annotator, document.getElementById('toolbar'))
+        this.annotator.on('createAnnotation', async (anno) => this.createAnnotation(anno))
+        this.annotator.on('updateAnnotation', async (anno) => this.updateAnnotation(anno))
+        this.annotator.on('deleteAnnotation', async (anno) => this.deleteAnnotation(anno))
+      },
+
+      async loadAnnotations(path) {
+        this.annosPath = path
+        let annotations = []
+        let resp = await fetch(`${annotationsEndpoint}/annotations/${this.annosPath}/`, {
+          headers: {
+            Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld'
+          }
+        })
+        if (resp.ok) {
+          resp = await resp.json()
+          this._target = resp.target
+          annotations = resp.annotations
+          this.annotator.setAnnotations(resp.annotations)
+        }
+        // console.log(`loadAnnotations: path=${this.annosPath}`, annotations)
+        this.annotations = this.annotator.getAnnotations()
+      },
+
+      async createAnnotation(anno) {
+        anno.id = `https://api.visual-essays.net/annotation/${this.annosPath}/${sha256(anno.id).slice(0,7)}`
+        anno.target.id = this.path
+        let resp = await fetch(`${annotationsEndpoint}/annotation/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
+            Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
+            Authorization: `Bearer: ${this.authToken}`
+          },
+          body: JSON.stringify({annotation: anno, path: this.path})
+        })
+        if (resp.ok && resp.status === 201) {
+          this.annotator.setAnnotations(this.annotator.getAnnotations())
+          this.annotations = this.annotator.getAnnotations()
+        } else {
+          console.log(`createAnnotation: unexpected resp_code=${resp.status}`)
+        }
+      },
+      
+      async updateAnnotation(anno) {
+        anno.target.id = this._target
+        let resp = await fetch(`${annotationsEndpoint}/annotation/${this.annosPath}/${anno.id.split('/').pop()}/`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
+            Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
+            Authorization: `Bearer: ${this.authToken}`
+          },
+          body: JSON.stringify(anno)
+        })
+        if (resp.status === 202) {
+          this.annotations = this.annotator.getAnnotations()
+        } else {
+          console.log(`updateAnnotation: unexpected resp_code=${resp.status}`)
+        }
+      },
+
+      async deleteAnnotation(anno) {
+        let resp = await fetch(`${annotationsEndpoint}/annotation/${this.annosPath}/${anno.id.split('/').pop()}/`, {
+          method: 'DELETE',
+          headers: {Authorization: `Bearer: ${this.authToken}`}
+        })
+        if (resp.status === 204) {
+          this.annotations = this.annotator.getAnnotations()
+        } else {
+          console.log(`deleteAnnotation: unexpected resp_code=${resp.status}`)
+        }
+      },
+
+      annoThumbnail(anno) {
+        let serviceHost = this.imageInfo.service[0].id || this.imageInfo.service[0]['@id']
+        let coords = anno.target.selector.value.split(':').pop().split(',').map(n => Math.round(n))
+        return `${serviceHost}/${coords.join(',')}/80,/0/default.jpg`
+      },
+      
+      openDepicts() {
+        document.querySelector('ve-depicts').edit()
+      },
+
+      showHelp() {
+        this.$refs.helpDialog.show()
+      },
+
+      findItem(toMatch, current, seq) {
+        seq = seq || 1
+        const found = this._findItems(toMatch, current)
+        return found.length >= seq ? found[seq-1] : null
+      },
+
+      _findItems(toMatch, current, found) {
+        found = found || []
+        if (current.items) {
+          for (let i = 0; i < current.items.length; i++ ) {
+            let item = current.items[i]
+            let isMatch = !Object.entries(toMatch).find(([attr, val]) => item[attr] && item[attr] !== val)
+            if (isMatch) found.push(item)
+            else this._findItems(toMatch, item, found)
+          }
+        }
+        return found
+      },
+
+      initAuth() {
+        netlifyIdentity.on('init', (user) => {
+          this.user = user
+          if (!this.tokenIsValid()) this.refreshToken()
+        })
+        netlifyIdentity.on('login', user => {
+          this.user = user
+          console.log('login', user)
+          netlifyIdentity.close()
+        })
+        netlifyIdentity.on('open', (e) => {
+          if (e === 'user') {
+            netlifyIdentity.logout()
+            this.user = null
+            netlifyIdentity.close()
+          }
+        })
+        this.validateToken()
+      },
+
+      tokenIsValid(token) {
+        // console.log('tokenIsValid', this.user.token.expires_at, Date.now())
+        return this.user && this.user.token ? this.user.token.expires_at > Date.now() : false
+      },
+      
+      async validateToken() {
+        let timeRemaining = this.user ? this.user.token.expires_at - Date.now() : 0
+        // console.log(`validateToken: user=${this.user} timeRemaining=${timeRemaining} isValid=${timeRemaining > 0}`)
+        if (this.user && timeRemaining < 1 * 1800 * 1000) this.refreshToken() // refresh token before expiration
+      },
+
+      refreshToken() {
+        // console.log(`refreshToken: tokenIsRefreshing=${this.tokenIsRefreshing}`)
+        if (this.user && this.user.token.refresh_token && !this.tokenIsRefreshing) {
+          this.tokenIsRefreshing = true
+          const formData = new FormData()
+          formData.append('grant_type', 'refresh_token')
+          formData.append('refresh_token', this.user.token.refresh_token)
+          fetch('https://editor.visual-essays.net/.netlify/identity/token', {
+              method : 'POST',
+              body : formData
+          }).then(x=>x.json()).then(newToken => {
+            this.user.token.access_token=newToken.access_token
+            this.user.token.refresh_token=newToken.refresh_token
+            this.user.token.expires_at = jwt_decode(newToken.access_token).exp * 1000
+            localStorage.setItem('gotrue.user', JSON.stringify(this.user))
+            console.log('auth token refreshed')
+          })
+          .catch(err => {
+            console.log('Token refresh failed', err, `refresh_token=${this.user.token.refresh_token}`)
+            netlifyIdentity.logout()
+            this.user = null
+          })
+          this.tokenIsRefreshing = false
+        }
+      }
     },
+    
     watch: {
-      authToken(authToken) {
-        if (authToken) this.user = jwt_decode(authToken)
+      manifestUrl(manifestUrl) {
+        if (manifestUrl) 
+          fetch(manifestUrl).then(resp => resp.json())
+          .then(manifest =>
+            !Array.isArray(manifest['@context']) && parseFloat(manifest['@context'].split('/').slice(-2,-1).pop()) < 3
+              ? fetch('https://api.visual-essays.net/prezi2to3/', {
+                  method: 'POST', body: JSON.stringify(manifest)}).then(resp => resp.json())
+              : Promise.resolve(manifest)
+          )
+          .then(manifest => this.manifest = manifest)
+      },
+      manifest(manifest) {
+        this.imageInfo = this.findItem({type:'Annotation', motivation:'painting'}, manifest).body
+        if (this.isLoggedIn) {
+          if (!this.viewer) this.initOSD()
+          this.$nextTick(() => {
+            let tileSource = this.imageInfo.service
+              ? `${this.imageInfo.service[0].id || this.imageInfo.service[0]['@id']}/info.json`
+              : { url: this.imageInfo.id, type: 'image', buildPyramid: true }
+            this.viewer.open(tileSource)
+            this.sourceHash = sha256(this.imageInfo.id).slice(0,7)
+          })
+        }
+      },
+      path(path) {
+        if (path) {
+          this.loadAnnotations(this.path)
+        }
+      },
+      hoverAnno(anno, prior) {
+        if (prior) document.querySelector(`[data-id="${prior.id}"]`).classList.remove('hover')
+        if (anno) document.querySelector(`[data-id="${anno.id}"]`).classList.add('hover')
+      },
+      selectAnno(anno) {
+        this.annotator.selectAnnotation(anno)
       }
     }
   })
