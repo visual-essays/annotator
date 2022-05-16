@@ -26,14 +26,15 @@
     /* .netlify-identity-user-details{display:none;} */
     .annotations ul {padding:0; list-style:none;}
     .annotations li {clear: both; margin-bottom: 18px;}
-    .anno {margin-bottom: 18px; overflow:auto; font-size:0.9em; cursor:pointer;}
-    .anno img {float:left; padding:0 12px 0 0;}
+    .anno {display:flex; align-content:flex-start; margin-bottom: 18px; overflow:auto; font-size:0.9em;}
+    .anno img {float:left; padding:0 12px 0 0; cursor:pointer;}
     .r6o-editor {width: 300px;}
     /*.r6o-editor-inner div:nth-last-of-type(2) {display: none}*/
     .a9s-toolbar .a9s-toolbar-btn{width:30px;height:30px;padding:0;}
     .anno-header, .depicts-header {display:flex;align-content:center;gap:9px;}
     .depicts-dialog-icon{color:red;}
     .help-dialog::part(panel){max-height:75vh; overflow-y:scroll;}
+    .anno-copy::part(base){padding-top:0;}
   </style>
 </head>
 <body>
@@ -49,8 +50,8 @@
       <div class="login" data-netlify-identity-menu></div>
     </header>
 
-    <main>
-      <div v-if="!manifestUrl" style="padding:12px;">Drag IIIF manifest into window</div>
+    <main v-cloak>
+      <div v-if="isLoggedIn && !manifestUrl" style="padding:12px;">Drag IIIF manifest into window</div>
       <div v-if="isLoggedIn" class="container">
         
         <div class="image" style="height:100%; width:100%;">
@@ -65,7 +66,7 @@
                 <sl-icon-button name="pencil" @click="openDepicts"></sl-icon-button>
               </sl-tooltip>
             </div>
-            <ve-depicts :manifest="manifestUrl"></ve-depicts>
+            <ve-depicts :manifest="manifestUrl" editable="true"></ve-depicts>
           </div>
           
           <div class="annotations">
@@ -77,9 +78,14 @@
             </div>
             <ul>
               <li v-for="anno in annotations" :key="anno.id">
-                <div class="anno" @click="selectAnno = selectAnno ? null : anno" @mouseEnter="hoverAnno = anno" @mouseLeave="hoverAnno = null">
-                  <img :src="annoThumbnail(anno)"/>
+                <div class="anno" @mouseEnter="hoverAnno = anno" @mouseLeave="hoverAnno = null">
+                  <img @click="selectAnno = selectAnno ? null : anno" :src="annoThumbnail(anno)"/>
                   <div v-html="anno.body[0].value"></div>
+                  <div>
+                    <sl-tooltip content="Copy annotation ID to clipboard">
+                      <sl-icon-button class="anno-copy" @click="copyTextToClipboard(anno.id.split('/').pop())" name="clipboard" label="Copy annotation ID"></sl-icon-button>
+                    </sl-tooltip>
+                  </div>
                 </div>
               </li>
             </ul>
@@ -96,7 +102,7 @@
 
     <ve-footer></ve-footer>
 
-    <sl-dialog ref="helpDialog" class="help-dialog" label="Image Annotator Tool">
+    <sl-dialog v-cloak ref="helpDialog" class="help-dialog" label="Image Annotator Tool">
       The Image Annotator Tool is used to:
       <ol>
         <li>
@@ -192,11 +198,13 @@
       hoverAnno: null,
       selectAnno: null,
       annosPath: null,
-      user: null
+      user: null,
+      tokenIsRefreshing: false
     }),
     computed: {
       isLoggedIn() { return this.tokenIsValid() },
       userHash() { return this.user && sha256(this.user?.email).slice(0,7) },
+      authToken() { return this.user ? this.user.token.access_token : null},
       path() { return this.sourceHash
         ? this.annoBase
           ? `${this.annoBase}/${this.sourceHash}`
@@ -227,6 +235,7 @@
           user_metadata: {full_name: ''}
         }
         localStorage.setItem('gotrue.user', JSON.stringify(_user))
+        // console.log(JSON.parse(localStorage.getItem('gotrue.user')))
       }
       this.initAuth()
       this.manifestUrl = qargs.get('manifest')
@@ -277,13 +286,15 @@
           annotations = resp.annotations
           this.annotator.setAnnotations(resp.annotations)
         }
-        // console.log(`loadAnnotations: path=${this.annosPath}`, annotations)
+        console.log(`loadAnnotations: path=${this.annosPath}`, annotations)
         this.annotations = this.annotator.getAnnotations()
       },
 
       async createAnnotation(anno) {
-        anno.id = `https://api.visual-essays.net/annotation/${this.annosPath}/${sha256(anno.id).slice(0,7)}`
-        anno.target.id = this.path
+        // anno.id = `https://api.visual-essays.net/annotation/${this.annosPath}/${sha256(anno.id).slice(0,7)}`
+        anno.id = sha256(anno.id).slice(0,7)
+        // anno.target.id = this.path
+        anno.target.id = this.sourceHash
         let resp = await fetch(`${annotationsEndpoint}/annotation/`, {
           method: 'POST',
           headers: {
@@ -345,6 +356,11 @@
         this.$refs.helpDialog.show()
       },
 
+      copyTextToClipboard(text) {
+        console.log('copyTextToClipboard', text)
+        if (navigator.clipboard) navigator.clipboard.writeText(text)
+      },
+
       findItem(toMatch, current, seq) {
         seq = seq || 1
         const found = this._findItems(toMatch, current)
@@ -365,19 +381,15 @@
       },
 
       initAuth() {
-        netlifyIdentity.on('init', (user) => {
-          this.user = user
-          if (!this.tokenIsValid()) this.refreshToken()
-        })
+        // netlifyIdentity.on('init', (user) => this.user = user)
         netlifyIdentity.on('login', user => {
           this.user = user
-          console.log('login', user)
+          this.validateToken()
           netlifyIdentity.close()
         })
         netlifyIdentity.on('open', (e) => {
           if (e === 'user') {
-            netlifyIdentity.logout()
-            this.user = null
+            this.logout()
             netlifyIdentity.close()
           }
         })
@@ -391,8 +403,15 @@
       
       async validateToken() {
         let timeRemaining = this.user ? this.user.token.expires_at - Date.now() : 0
-        // console.log(`validateToken: user=${this.user} timeRemaining=${timeRemaining} isValid=${timeRemaining > 0}`)
-        if (this.user && timeRemaining < 1 * 1800 * 1000) this.refreshToken() // refresh token before expiration
+        let isValid = timeRemaining > 0
+        console.log(`validateToken: user=${this.user} timeRemaining=${timeRemaining} isValid=${isValid}`)
+        if (this.user && timeRemaining < 300 * 1000) { // refresh token before expiration
+          if (this.user.token.refresh_token) {
+            this.refreshToken()
+          } else if (timeRemaining < 0) {
+            this.logout()
+          }
+        }
       },
 
       refreshToken() {
@@ -414,18 +433,21 @@
           })
           .catch(err => {
             console.log('Token refresh failed', err, `refresh_token=${this.user.token.refresh_token}`)
-            netlifyIdentity.logout()
-            this.user = null
+            this.logout()
           })
           this.tokenIsRefreshing = false
         }
-      }
-    },
-    
-    watch: {
-      manifestUrl(manifestUrl) {
-        if (manifestUrl) 
-          fetch(manifestUrl).then(resp => resp.json())
+      },
+
+      logout() {
+        console.log('logout')
+        netlifyIdentity.logout()
+        this.user = null
+        // if (location.href !== `${location.origin}/`) location.href = `${location.origin}/`
+      },
+
+      getManifest() {
+        fetch(this.manifestUrl).then(resp => resp.json())
           .then(manifest =>
             !Array.isArray(manifest['@context']) && parseFloat(manifest['@context'].split('/').slice(-2,-1).pop()) < 3
               ? fetch('https://api.visual-essays.net/prezi2to3/', {
@@ -433,6 +455,15 @@
               : Promise.resolve(manifest)
           )
           .then(manifest => this.manifest = manifest)
+      }
+    },
+    
+    watch: {
+      manifestUrl() {
+        if (this.manifestUrl && this.isLoggedIn) this.getManifest()
+      },
+      isLoggedIn() {
+        if (this.manifestUrl && this.isLoggedIn) this.getManifest()
       },
       manifest(manifest) {
         this.imageInfo = this.findItem({type:'Annotation', motivation:'painting'}, manifest).body
