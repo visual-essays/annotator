@@ -191,7 +191,7 @@
       manifestUrl: null,
       manifest: null,
       imageInfo: null,
-      sourceHash: null,
+      imageHash: null,
       overDropzone: false,
       annoBase: null,
       annotations: [],
@@ -203,13 +203,13 @@
     }),
     computed: {
       isLoggedIn() { return this.tokenIsValid() },
-      userHash() { return this.user && sha256(this.user?.email).slice(0,7) },
+      userHash() { return this.user && this.hashStr(this.user?.email.toLowerCase()) },
       authToken() { return this.user ? this.user.token.access_token : null},
-      path() { return this.sourceHash
+      path() { return this.imageHash
         ? this.annoBase
-          ? `${this.annoBase}/${this.sourceHash}`
+          ? `${this.annoBase}/${this.imageHash}`
           : this.user
-            ? `${this.userHash}/${this.sourceHash}`
+            ? `${this.userHash}/${this.imageHash}`
             : null
         : null
       }
@@ -244,9 +244,8 @@
       this.$refs.closeHelpButton.addEventListener('click', () => this.$refs.helpDialog.hide())
     },
     methods: {
-      reset() {
-        this.manifestUrl = null
-      },
+      hashStr(s) { return sha256(s) },
+      reset() { this.manifestUrl = null },
 
       drop(e) {
         this.overDropzone = false
@@ -291,10 +290,8 @@
       },
 
       async createAnnotation(anno) {
-        // anno.id = `https://api.visual-essays.net/annotation/${this.annosPath}/${sha256(anno.id).slice(0,7)}`
-        anno.id = sha256(anno.id).slice(0,7)
-        // anno.target.id = this.path
-        anno.target.id = this.sourceHash
+        anno.id = this.hashStr(anno.id).slice(0,8)
+        anno.target.id = this.imageHash
         let resp = await fetch(`${annotationsEndpoint}/annotation/`, {
           method: 'POST',
           headers: {
@@ -357,7 +354,6 @@
       },
 
       copyTextToClipboard(text) {
-        console.log('copyTextToClipboard', text)
         if (navigator.clipboard) navigator.clipboard.writeText(text)
       },
 
@@ -404,7 +400,7 @@
       async validateToken() {
         let timeRemaining = this.user ? this.user.token.expires_at - Date.now() : 0
         let isValid = timeRemaining > 0
-        console.log(`validateToken: user=${this.user} timeRemaining=${timeRemaining} isValid=${isValid}`)
+        // console.log(`validateToken: user=${this.user} timeRemaining=${timeRemaining} isValid=${isValid}`)
         if (this.user && timeRemaining < 300 * 1000) { // refresh token before expiration
           if (this.user.token.refresh_token) {
             this.refreshToken()
@@ -440,7 +436,6 @@
       },
 
       logout() {
-        console.log('logout')
         netlifyIdentity.logout()
         this.user = null
         // if (location.href !== `${location.origin}/`) location.href = `${location.origin}/`
@@ -474,7 +469,7 @@
               ? `${this.imageInfo.service[0].id || this.imageInfo.service[0]['@id']}/info.json`
               : { url: this.imageInfo.id, type: 'image', buildPyramid: true }
             this.viewer.open(tileSource)
-            this.sourceHash = sha256(this.imageInfo.id).slice(0,7)
+            this.imageHash = this.hashStr(this.imageInfo.id).slice(0,8)
           })
         }
       },
