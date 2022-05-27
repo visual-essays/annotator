@@ -466,7 +466,7 @@
           if (!this.viewer) this.initOSD()
           this.$nextTick(() => {
             let tileSource = this.imageInfo.service
-              ? `${this.imageInfo.service[0].id || this.imageInfo.service[0]['@id']}/info.json`
+              ? `${(this.imageInfo.service[0].id || this.imageInfo.service[0]['@id']).replace(/\/info\.json$/,'')}/info.json`
               : { url: this.imageInfo.id, type: 'image', buildPyramid: true }
             this.viewer.open(tileSource)
             this.imageHash = this.hashStr(this.imageInfo.id).slice(0,8)
