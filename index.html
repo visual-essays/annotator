@@ -340,7 +340,7 @@
       },
 
       annoThumbnail(anno) {
-        let serviceHost = this.imageInfo.service[0].id || this.imageInfo.service[0]['@id']
+        let serviceHost = (this.imageInfo.service[0].id || this.imageInfo.service[0]['@id']).replace(/\/info\.json$/,'')
         let coords = anno.target.selector.value.split(':').pop().split(',').map(n => Math.round(n))
         return `${serviceHost}/${coords.join(',')}/80,/0/default.jpg`
       },
