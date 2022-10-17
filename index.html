@@ -121,6 +121,7 @@
     const apiEndpoint = isDev ? 'http://localhost:8000' : 'https://api.juncture-digital.org'
     const wcEndpoint = isDev ? 'http://localhost:3333/build' : 'https://unpkg.com/visual-essays/dist/visual-essays'
     const annotationsEndpoint = isDev ? 'http://localhost:8000' : 'https://api.juncture-digital.org'
+
     addEl({tag: 'link', rel: 'stylesheet', type: 'text/css', href: `${wcEndpoint}/visual-essays.css`})
     addEl({tag: 'script', type: 'module', src: `${wcEndpoint}/visual-essays.esm.js`})
     console.log(`annotator: hostname=${window.location.hostname} isDev=${isDev} apiEndpoint=${apiEndpoint} iiifServer=${iiifServer} wcEndpoint=${wcEndpoint} annotationsEndpoint=${annotationsEndpoint}`)
@@ -239,7 +240,7 @@
         let url = `${annotationsEndpoint}/annotations/${this.annoPath}/`
         let resp = await fetch(url, {
           headers: {
-            Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld'
+            // Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld'
           }
         })
         if (resp.ok) {
@@ -259,7 +260,7 @@
           method: 'POST',
           headers: {
             'Content-Type': 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
-            Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
+            // Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
             Authorization: `Token: ${this.ghAuthToken}`
           },
           body: JSON.stringify({annotation: anno, path: this.annoPath})
@@ -280,7 +281,7 @@
           method: 'PUT',
           headers: {
             'Content-Type': 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
-            Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
+            // Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
             Authorization: `Bearer: ${this.ghAuthToken}`
           },
           body: JSON.stringify(anno)
