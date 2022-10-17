@@ -147,11 +147,13 @@
       repo: null,
       userCanUpdate: false,
       annotations: [],
+      hoverAnno: null,
+      selectAnno: null
 
     }),
     computed: {
       isLoggedIn() { return this.ghAuthToken !== null },
-      annoPath() { return `${this.contentPath}/${this.imageHash}.json` }
+      annoPath() { return this.imageHash ? `${this.contentPath}/${this.imageHash}` : null}
     },
     created() {
       this.ghAuthToken = localStorage.getItem('gh-auth-token')
@@ -232,6 +234,24 @@
 
       hashStr(s) { return sha256(s) },
 
+      async loadAnnotations() {
+        let annotations = []
+        let url = `${annotationsEndpoint}/annotations/${this.annoPath}/`
+        let resp = await fetch(url, {
+          headers: {
+            Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld'
+          }
+        })
+        if (resp.ok) {
+          resp = await resp.json()
+          this._target = resp.target
+          annotations = resp.annotations
+          this.annotator.setAnnotations(resp.annotations)
+        }
+        console.log(`loadAnnotations: url=${url}`, annotations)
+        this.annotations = this.annotator.getAnnotations()
+      },
+      
       async createAnnotation(anno) {
         anno.id = this.hashStr(anno.id).slice(0,8)
         anno.target.id = this.imageHash
@@ -250,6 +270,44 @@
         } else {
           console.log(`createAnnotation: unexpected resp_code=${resp.status}`)
         }
+      },
+
+      async updateAnnotation(anno) {
+        anno.target.id = this._target
+        let url = `${annotationsEndpoint}/annotation/${this.annoPath}/${anno.id.split('/').pop()}/`
+        console.log(`updateAnnotation: url=${url}`)
+        let resp = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
+            Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
+            Authorization: `Bearer: ${this.ghAuthToken}`
+          },
+          body: JSON.stringify(anno)
+        })
+        if (resp.status === 202) {
+          this.annotations = this.annotator.getAnnotations()
+        } else {
+          console.log(`updateAnnotation: unexpected resp_code=${resp.status}`)
+        }
+      },
+
+      async deleteAnnotation(anno) {
+        let resp = await fetch(`${annotationsEndpoint}/annotation/${this.annoPath}/${anno.id.split('/').pop()}/`, {
+          method: 'DELETE',
+          headers: {Authorization: `Bearer: ${this.ghAuthToken}`}
+        })
+        if (resp.status === 204) {
+          this.annotations = this.annotator.getAnnotations()
+        } else {
+          console.log(`deleteAnnotation: unexpected resp_code=${resp.status}`)
+        }
+      },
+
+      annoThumbnail(anno) {
+        let serviceHost = (this.imageInfo.service[0].id || this.imageInfo.service[0]['@id']).replace(/\/info\.json$/,'')
+        let coords = anno.target.selector.value.split(':').pop().split(',').map(n => Math.round(n))
+        return `${serviceHost}/${coords.join(',')}/80,/0/default.jpg`
       },
 
     },
@@ -273,9 +331,9 @@
           })
         }
       },
-      path(path) {
-        if (path) {
-          this.loadAnnotations(this.path)
+      annoPath() {
+        if (this.annoPath) {
+          this.loadAnnotations()
         }
       },
       hoverAnno(anno, prior) {
