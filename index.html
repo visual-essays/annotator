@@ -4,26 +4,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
   <link href="https://visual-essays.github.io/web-app/static/images/favicon.svg" rel="icon" type="image/svg+xml"/>
   <link href="https://visual-essays.github.io/web-app/static/images/favicon.png" rel="icon" type="image/png"/>
-  <title>Visual Essays Image Annotator</title>
-  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet"/>
-  <link href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.0.0-beta.73/dist/themes/light.css" rel="stylesheet"/>
+  <title>Juncture: Annotator</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet" />
+  <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap/dist/css/bootstrap.min.css" />
+  <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" integrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@recogito/annotorious-openseadragon@2.7.6/dist/annotorious.min.css">
+
   <style>
     [v-cloak] {display: none}
-    body {margin: 0;}
     * {box-sizing: border-box;}
-    #app {font-family:Roboto,sans-serif;height:100vh; width:100%;}
-    header {position:fixed; width:100%; min-height:50px; display:flex; align-items:center; gap:16px; padding:6px 18px; background-color:#ccc; z-index:100;}
-    header div:last-child {margin-left: auto;}
-    .logo {height:30px;}
-    .title {font-size:1.5rem; font-weight:bold;}
-    .login ul {list-style-type:none; margin:0; padding:0; overflow:hidden; }
-    .login li {float:left; padding-left: 12px;}
+    body {max-width:1000px; margin: auto !important;}
     main {width:100%; height: calc(100vh - 50px); padding: 50px 0;}
     #osd { width:100%; height:100%}
     .container {width:100%; height:100%; display:flex; gap:12px; padding:12px;}
     .overDropzone {position:absolute; left:0; background:rgba(0,0,0,.1);}
-    /* .netlify-identity-user-details{display:none;} */
     .annotations ul {padding:0; list-style:none;}
     .annotations li {clear: both; margin-bottom: 18px;}
     .anno {display:flex; align-content:flex-start; margin-bottom: 18px; overflow:auto; font-size:0.9em;}
@@ -39,16 +34,25 @@
 </head>
 <body>
 
-  <div id="app" @drop.prevent="drop" @dragover.prevent @dragover="overDropzone=true" @dragleave="overDropzone=false" :class="{overDropzone}">
-    
-    <header v-cloak>
-      <a href="/"><img class="logo" src="https://visual-essays.github.io/content/static/images/favicon.svg"></a>
-      <div class="title">Visual Essays Image Annotator</div>
-      <sl-tooltip content="Show help">
-        <div style="display:flex; align-items:center; cursor:pointer;" @click="showHelp"><sl-icon-button name="question-square"></sl-icon-button> Help</div>
-      </sl-tooltip>
-      <div class="login" data-netlify-identity-menu></div>
-    </header>
+  <div id="app">
+  
+    <ve-header
+      v-cloak
+      background="#5B152E"
+      logo="https://raw.githubusercontent.com/visual-essays/media/main/images/Juncture_Logo.png"
+      contact="Ron.Snyder@ithaka.org"
+      
+    >
+      <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/editor">Editor</a></li>
+        <li><a href="/media">Media tool</a></li>
+        <li><a href="/contact">Contact us</a></li>
+        <li>auth</li>
+      </ul>
+    </ve-header>
+
+    <ve-content-path ref="contentSelector" :content-path="contentPath" mode="essays" sticky="true"></ve-content-path>
 
     <main v-cloak>
       <div v-if="isLoggedIn && !manifestUrl" style="padding:12px;">Drag IIIF manifest into window</div>
@@ -62,9 +66,7 @@
           <div class="depicts">
             <div class="depicts-header">
               <div><b>Entities</b><em> (people, places, etc) </em><b>depicted in image</b></div>
-              <sl-tooltip content="Edit depicted entities">
-                <sl-icon-button name="pencil" @click="openDepicts"></sl-icon-button>
-              </sl-tooltip>
+              <b-button name="pencil" @click="openDepicts"></b-button>
             </div>
             <ve-depicts :manifest="manifestUrl" :editable="true"></ve-depicts>
           </div>
@@ -72,9 +74,7 @@
           <div class="annotations">
             <div class="anno-header">
               <div style="margin-top:12px;display:inline-block;"><b>Image annotations</b></div>
-              <sl-tooltip content="Add annotation">
-                <div id="toolbar" style="display:inline-block;"></div>
-              </sl-tooltip>
+              <div id="toolbar" style="display:inline-block;"></div>
             </div>
             <ul>
               <li v-for="anno in annotations" :key="anno.id">
@@ -82,9 +82,7 @@
                   <img @click="selectAnno = selectAnno ? null : anno" :src="annoThumbnail(anno)"/>
                   <div v-html="anno.body[0].value"></div>
                   <div>
-                    <sl-tooltip content="Copy annotation ID to clipboard">
-                      <sl-icon-button class="anno-copy" @click="copyTextToClipboard(anno.id.split('/').pop())" name="clipboard" label="Copy annotation ID"></sl-icon-button>
-                    </sl-tooltip>
+                    <b-button class="anno-copy" @click="copyTextToClipboard(anno.id.split('/').pop())" name="clipboard" label="Copy annotation ID"></b-button>
                   </div>
                 </div>
               </li>
@@ -99,162 +97,89 @@
       </div>
 
     </main>
-
-    <ve-footer></ve-footer>
-
-    <sl-dialog v-cloak ref="helpDialog" class="help-dialog" label="Image Annotator Tool">
-      The Image Annotator Tool is used to:
-      <ol>
-        <li>
-          <h4>Identify entities that are depicted in the image</h4>
-          <p>
-          Select the pencil icon in the <b>Entities depicted in image</b> section to add or remove depicted entities.
-          </p> 
-          <p>
-          Check the <b>Prominent</b> box for entities that are the main subject of the image or are a prominent feature
-          in the image. 
-          <p>
-          <p>
-          Check the <b>Digital Representation Of</b> box for entities that are a faithful digitized representation 
-          of the indicated object or work. This attribute is typically used for images of artwork.
-          <p>
-        </li>
-        <li>
-          <h4>Annotate areas or points of interest in the image</h4>
-          <p>
-          Hold the SHIFT key while clicking and dragging the mouse on the image to create a new annotation.
-          <p>
-          </p>
-          Use the shape icons in the <b>Image annotations</b> section to switch between rectangle and polygon drawing mode. 
-          <p>
-          </p>
-          Click or tap the annotation to edit, click or tap anywhere and drag to create a new annotation.
-          When drawing a polygon, a double click closes the shape. When using touch, keep the finger on the screen 
-          and hold for a while to close the polygon.
-          <p>
-          </p>
-          Annotations can be updated or deleted after creation by clicking on the annotation shape on the image or by clicking
-          the annotation entry from the Annotations list.
-          </p>
-        </li>
-      </ol>
-      <sl-button ref="closeHelpButton" slot="footer" variant="primary">Close</sl-button>
-    </sl-dialog>    
   
   </div>
-
-  <script type="module">
-    const script = document.createElement('script')
-    script.type = 'module'
-    script.src = location.hostname == 'localhost'
-      ? 'http://localhost:3333/build/visual-essays.esm.js'
-      : 'https://unpkg.com/visual-essays/dist/visual-essays/visual-essays.esm.js'
-    document.body.appendChild(script)
+  
+  <!-- This is used for deep linking of Single Page Apps when hosted with GitHub Pages -->
+  <script type="text/javascript">
+    (function(l) {
+      if (l.search[1] === '/' ) {
+        let decoded = l.search.slice(1).split('&').map(s => s.replace(/~and~/g, '&')).join('?')
+        window.history.replaceState(null, null, l.pathname.slice(0, -1) + decoded + l.hash)
+      }
+    }(window.location))
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
-  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js" type="text/javascript"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.0.0-beta.73/dist/shoelace.js" type="module"></script>
+  <script>
+    let addEl = (args) => {
+      let el = document.createElement(args.tag)
+      Object.keys(args).filter(key => key !== 'tag').forEach(key => el[key] = args[key])
+      document.getElementsByTagName(args.tag === 'script' ? 'body' : 'head')[0].appendChild(el)
+      return el
+    }
+    const isDev = window.location.hostname == 'localhost'
+    const iiifServer = 'https://iiif.juncture-digital.org'
+    const apiEndpoint = isDev ? 'http://localhost:8000' : 'https://api.juncture-digital.org'
+    const wcEndpoint = isDev ? 'http://localhost:3333/build' : 'https://unpkg.com/visual-essays/dist/visual-essays'
+    const annotationsEndpoint = isDev ? 'http://localhost:8000' : 'https://api.juncture-digital.org'
+    addEl({tag: 'link', rel: 'stylesheet', type: 'text/css', href: `${wcEndpoint}/visual-essays.css`})
+    addEl({tag: 'script', type: 'module', src: `${wcEndpoint}/visual-essays.esm.js`})
+    console.log(`annotator: hostname=${window.location.hostname} isDev=${isDev} apiEndpoint=${apiEndpoint} iiifServer=${iiifServer} wcEndpoint=${wcEndpoint} annotationsEndpoint=${annotationsEndpoint}`)
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdn.jsdelivr.net/npm/openseadragon@3.0.0/build/openseadragon/openseadragon.min.js" type="text/javascript"></script>
   <script src="https://cdn.jsdelivr.net/npm/@recogito/annotorious-openseadragon@2.7.6/dist/openseadragon-annotorious.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@recogito/annotorious-toolbar@0.1.1/dist/annotorious-toolbar.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script>
-    // jwt-decode 
-    (function(factory){typeof define==='function'&&define.amd?define(factory):factory()}((function(){'use strict';var chars="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";function InvalidCharacterError(message){this.message=message}
-    InvalidCharacterError.prototype=new Error();InvalidCharacterError.prototype.name="InvalidCharacterError";function polyfill(input){var str=String(input).replace(/=+$/,"");if(str.length%4==1){throw new InvalidCharacterError("'atob' failed: The string to be decoded is not correctly encoded.")}
-    for(var bc=0,bs,buffer,idx=0,output="";(buffer=str.charAt(idx++));~buffer&&((bs=bc%4?bs*64+buffer:buffer),bc++%4)?(output+=String.fromCharCode(255&(bs>>((-2*bc)&6)))):0){buffer=chars.indexOf(buffer)}
-    return output}
-    var atob=(typeof window!=="undefined"&&window.atob&&window.atob.bind(window))||polyfill;function b64DecodeUnicode(str){return decodeURIComponent(atob(str).replace(/(.)/g,function(m,p){var code=p.charCodeAt(0).toString(16).toUpperCase();if(code.length<2){code="0"+code}
-    return"%"+code}))}
-    function base64_url_decode(str){var output=str.replace(/-/g,"+").replace(/_/g,"/");switch(output.length%4){case 0:break;case 2:output+="==";break;case 3:output+="=";break;default:throw "Illegal base64url string!"}
-    try{return b64DecodeUnicode(output)}catch(err){return atob(output)}}
-    function InvalidTokenError(message){this.message=message}
-    InvalidTokenError.prototype=new Error();InvalidTokenError.prototype.name="InvalidTokenError";function jwtDecode(token,options){if(typeof token!=="string"){throw new InvalidTokenError("Invalid token specified")}
-    options=options||{};var pos=options.header===!0?0:1;try{return JSON.parse(base64_url_decode(token.split(".")[pos]))}catch(e){throw new InvalidTokenError("Invalid token specified: "+e.message)}}
-    if(window){if(typeof window.define=="function"&&window.define.amd){window.define("jwt_decode",function(){return jwtDecode})}else if(window){window.jwt_decode=jwtDecode}}})))
-  </script>
-
+  <script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script>
+  <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue.min.js"></script>
+  <script src="https://unpkg.com/bootstrap-vue@latest/dist/bootstrap-vue-icons.min.js"></script>
   <script type="module">
-  import { defineCustomElements } from 'https://unpkg.com/visual-essays/loader/index.js'
 
-  const iiifServer = location.hostname === 'localhost' ? 'http://localhost:8088' : 'https://iiif.visual-essays.net'
-  const annotationsEndpoint = location.hostname === 'localhost'
-  ? 'http://localhost:8000'
-  : 'https://api.visual-essays.net'
-
-  new Vue({
-    name: 'Visual Essays Image Annotator',
+    new Vue({
     el: '#app',
     data: () => ({
-      viewer: null,
-      annotator: null,
-      manifestUrl: null,
+      manifestUrl: '',
       manifest: null,
-      imageInfo: null,
+      contentPath: '',
       imageHash: null,
-      overDropzone: false,
-      annoBase: null,
+      pathRoot: '/',
+      ghAuthToken: null,
+      acct: null,
+      repo: null,
+      userCanUpdate: false,
       annotations: [],
-      hoverAnno: null,
-      selectAnno: null,
-      annosPath: null,
-      user: null,
-      tokenIsRefreshing: false
+
     }),
     computed: {
-      isLoggedIn() { return this.tokenIsValid() },
-      userHash() { return this.user && this.hashStr(this.user?.email.toLowerCase()) },
-      authToken() { return this.user ? this.user.token.access_token : null},
-      path() { return this.imageHash
-        ? this.annoBase
-          ? `${this.annoBase}/${this.imageHash}`
-          : this.user
-            ? `${this.userHash}/${this.imageHash}`
-            : null
-        : null
-      }
+      isLoggedIn() { return this.ghAuthToken !== null },
+      annoPath() { return `${this.contentPath}/${this.imageHash}.json` }
     },
-    async created() {
-      let qargs = new URL(location.href).searchParams
-      this.annoBase = qargs.get('anno-base')
-      let _authToken = qargs.get('auth-token')
-      if (_authToken) {
-        let decoded = jwt_decode(_authToken)
-        let _user = {
-          url: 'https://annotator.visual-essays.net/.netlify/identity',
-          token: {
-            access_token: _authToken,
-            token_type: 'bearer',
-            expires_in: decoded.exp * 1000 - Date.now(),
-            refresh_token: null,
-            expires_at: decoded.exp * 1000
-          },
-          aud: '',
-          role: '',
-          email: decoded.email,
-          user_metadata: {full_name: ''}
-        }
-        localStorage.setItem('gotrue.user', JSON.stringify(_user))
-        // console.log(JSON.parse(localStorage.getItem('gotrue.user')))
+    created() {
+      this.ghAuthToken = localStorage.getItem('gh-auth-token')
+      window.addEventListener('storage', (evt) => { this.ghAuthToken = localStorage.getItem('gh-auth-token') })
+      let pathElems = window.location.pathname.split('/').filter(pe => pe)
+      if (pathElems.length > 0 && pathElems[0] === 'annotator') {
+        this.pathRoot = `/${pathElems[0]}/`
+        pathElems = pathElems.slice(1)
       }
-      this.initAuth()
+      let qargs = new URL(location.href).searchParams
       this.manifestUrl = qargs.get('manifest')
+      this.contentPath = qargs.has('anno-base') ? qargs.get('anno-base') : pathElems.join('/')
+      console.log(`annotator.created: manifest=${this.manifestUrl} contentPath=${this.contentPath}`)
     },
     mounted() {
-      this.$refs.closeHelpButton.addEventListener('click', () => this.$refs.helpDialog.hide())
+      this.$refs.contentSelector.addEventListener('contentPathChanged', async (evt) => this.parseContentPath(evt.detail))
     },
     methods: {
-      hashStr(s) { return sha256(s) },
-      reset() { this.manifestUrl = null },
 
-      drop(e) {
-        this.overDropzone = false
-        let inputText = ''
-        if (e.dataTransfer) inputText = decodeURI(e.dataTransfer.getData('Text') || e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text/uri-list'))
-        if (inputText && isURL(inputText)) {
-          fetch(`${iiifServer}/?url=${encodeURIComponent(inputText)}`).then(resp => resp.text())
-          .then((manifestUrl) => location.search = `?manifest=${encodeURI(manifestUrl)}`)
-        }
+      async parseContentPath(path) {
+        let [source, contentSpec] = path.split(':')
+        let [contentPath, argsStr] = contentSpec.split('?');
+        [this.acct, this.repo] = contentPath.split('/')
+        let filePath = contentPath.split('/').slice(2).join('/')
+        this.userCanUpdate = await this.$refs.contentSelector.repositoryIsWriteable()
+        console.log(`annotator: acct=${this.acct} repo=${this.repo} contentPath=${contentPath} filePath=${filePath} writeable=${this.userCanUpdate}`)
+        this.contentPath = contentPath
+        window.history.replaceState({}, null, `${this.pathRoot}${contentSpec}/?manifest=${this.manifestUrl}`)
       },
 
       initOSD() {
@@ -271,90 +196,19 @@
         this.annotator.on('deleteAnnotation', async (anno) => this.deleteAnnotation(anno))
       },
 
-      async loadAnnotations(path) {
-        this.annosPath = path
-        let annotations = []
-        let resp = await fetch(`${annotationsEndpoint}/annotations/${this.annosPath}/`, {
-          headers: {
-            Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld'
-          }
-        })
-        if (resp.ok) {
-          resp = await resp.json()
-          this._target = resp.target
-          annotations = resp.annotations
-          this.annotator.setAnnotations(resp.annotations)
-        }
-        console.log(`loadAnnotations: path=${this.annosPath}`, annotations)
-        this.annotations = this.annotator.getAnnotations()
+      getManifest() {
+        fetch(this.manifestUrl.replace(/\?/,'%3F')).then(resp => resp.json())
+          .then(manifest =>
+            !Array.isArray(manifest['@context']) && parseFloat(manifest['@context'].split('/').slice(-2,-1).pop()) < 3
+              ? fetch('https://api.visual-essays.net/prezi2to3/', {
+                method: 'POST', body: JSON.stringify(manifest)}).then(resp => resp.json())
+              : Promise.resolve(manifest)
+          )
+          .then(manifest => this.manifest = manifest)
       },
 
-      async createAnnotation(anno) {
-        anno.id = this.hashStr(anno.id).slice(0,8)
-        anno.target.id = this.imageHash
-        let resp = await fetch(`${annotationsEndpoint}/annotation/`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
-            Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
-            Authorization: `Bearer: ${this.authToken}`
-          },
-          body: JSON.stringify({annotation: anno, path: this.path})
-        })
-        if (resp.ok && resp.status === 201) {
-          this.annotator.setAnnotations(this.annotator.getAnnotations())
-          this.annotations = this.annotator.getAnnotations()
-        } else {
-          console.log(`createAnnotation: unexpected resp_code=${resp.status}`)
-        }
-      },
-      
-      async updateAnnotation(anno) {
-        anno.target.id = this._target
-        let resp = await fetch(`${annotationsEndpoint}/annotation/${this.annosPath}/${anno.id.split('/').pop()}/`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
-            Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
-            Authorization: `Bearer: ${this.authToken}`
-          },
-          body: JSON.stringify(anno)
-        })
-        if (resp.status === 202) {
-          this.annotations = this.annotator.getAnnotations()
-        } else {
-          console.log(`updateAnnotation: unexpected resp_code=${resp.status}`)
-        }
-      },
-
-      async deleteAnnotation(anno) {
-        let resp = await fetch(`${annotationsEndpoint}/annotation/${this.annosPath}/${anno.id.split('/').pop()}/`, {
-          method: 'DELETE',
-          headers: {Authorization: `Bearer: ${this.authToken}`}
-        })
-        if (resp.status === 204) {
-          this.annotations = this.annotator.getAnnotations()
-        } else {
-          console.log(`deleteAnnotation: unexpected resp_code=${resp.status}`)
-        }
-      },
-
-      annoThumbnail(anno) {
-        let serviceHost = (this.imageInfo.service[0].id || this.imageInfo.service[0]['@id']).replace(/\/info\.json$/,'')
-        let coords = anno.target.selector.value.split(':').pop().split(',').map(n => Math.round(n))
-        return `${serviceHost}/${coords.join(',')}/80,/0/default.jpg`
-      },
-      
       openDepicts() {
         document.querySelector('ve-depicts').edit()
-      },
-
-      showHelp() {
-        this.$refs.helpDialog.show()
-      },
-
-      copyTextToClipboard(text) {
-        if (navigator.clipboard) navigator.clipboard.writeText(text)
       },
 
       findItem(toMatch, current, seq) {
@@ -376,83 +230,29 @@
         return found
       },
 
-      initAuth() {
-        // netlifyIdentity.on('init', (user) => this.user = user)
-        netlifyIdentity.on('login', user => {
-          this.user = user
-          this.validateToken()
-          netlifyIdentity.close()
-        })
-        netlifyIdentity.on('open', (e) => {
-          if (e === 'user') {
-            this.logout()
-            netlifyIdentity.close()
-          }
-        })
-        this.validateToken()
-      },
+      hashStr(s) { return sha256(s) },
 
-      tokenIsValid(token) {
-        // console.log('tokenIsValid', this.user.token.expires_at, Date.now())
-        return this.user && this.user.token ? this.user.token.expires_at > Date.now() : false
-      },
-      
-      async validateToken() {
-        let timeRemaining = this.user ? this.user.token.expires_at - Date.now() : 0
-        let isValid = timeRemaining > 0
-        // console.log(`validateToken: user=${this.user} timeRemaining=${timeRemaining} isValid=${isValid}`)
-        if (this.user && timeRemaining < 300 * 1000) { // refresh token before expiration
-          if (this.user.token.refresh_token) {
-            this.refreshToken()
-          } else if (timeRemaining < 0) {
-            this.logout()
-          }
+      async createAnnotation(anno) {
+        anno.id = this.hashStr(anno.id).slice(0,8)
+        anno.target.id = this.imageHash
+        let resp = await fetch(`${annotationsEndpoint}/annotation/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
+            Accept: 'application/ld+json;profile="http://www.w3.org/ns/anno.jsonld',
+            Authorization: `Token: ${this.ghAuthToken}`
+          },
+          body: JSON.stringify({annotation: anno, path: this.annoPath})
+        })
+        if (resp.ok && resp.status === 201) {
+          this.annotator.setAnnotations(this.annotator.getAnnotations())
+          this.annotations = this.annotator.getAnnotations()
+        } else {
+          console.log(`createAnnotation: unexpected resp_code=${resp.status}`)
         }
       },
 
-      refreshToken() {
-        // console.log(`refreshToken: tokenIsRefreshing=${this.tokenIsRefreshing}`)
-        if (this.user && this.user.token.refresh_token && !this.tokenIsRefreshing) {
-          this.tokenIsRefreshing = true
-          const formData = new FormData()
-          formData.append('grant_type', 'refresh_token')
-          formData.append('refresh_token', this.user.token.refresh_token)
-          fetch('https://editor.visual-essays.net/.netlify/identity/token', {
-              method : 'POST',
-              body : formData
-          }).then(x=>x.json()).then(newToken => {
-            this.user.token.access_token=newToken.access_token
-            this.user.token.refresh_token=newToken.refresh_token
-            this.user.token.expires_at = jwt_decode(newToken.access_token).exp * 1000
-            localStorage.setItem('gotrue.user', JSON.stringify(this.user))
-            console.log('auth token refreshed')
-          })
-          .catch(err => {
-            console.log('Token refresh failed', err, `refresh_token=${this.user.token.refresh_token}`)
-            this.logout()
-          })
-          this.tokenIsRefreshing = false
-        }
-      },
-
-      logout() {
-        netlifyIdentity.logout()
-        this.user = null
-        // if (location.href !== `${location.origin}/`) location.href = `${location.origin}/`
-      },
-
-      getManifest() {
-        fetch(this.manifestUrl.replace(/\?/,'%3F')).then(resp => resp.json())
-          .then(manifest =>
-            !Array.isArray(manifest['@context']) && parseFloat(manifest['@context'].split('/').slice(-2,-1).pop()) < 3
-              ? fetch('https://api.visual-essays.net/prezi2to3/', {
-                  method: 'POST', body: JSON.stringify(manifest)}).then(resp => resp.json())
-              : Promise.resolve(manifest)
-          )
-          .then(manifest => this.manifest = manifest)
-      }
     },
-    
     watch: {
       manifestUrl() {
         if (this.manifestUrl && this.isLoggedIn) this.getManifest()
@@ -490,7 +290,6 @@
   Vue.config.productionTip = false
   Vue.config.devtools = true
 
-  function isURL(str) { return /^https*:\/\//.test(str) }
   </script>
 
 </body>
